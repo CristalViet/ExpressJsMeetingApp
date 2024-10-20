@@ -1,31 +1,31 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-
+const db=require('../database/db');
 
 const router = express.Router();
+const userController=require('../controller/userController')
 
 // Bộ nhớ tạm để lưu thông tin user (thay vì dùng database)
 const users = [];
 
+//Dang nhap
+router.post('/login', userController.loginUser);
 
 
-// Đăng ký tài khoản người dùng
-router.post('/register', async (req, res) => {
-    const { username, password } = req.body;
+// Tạo người dùng mới
+router.post('/users', userController.createUser);
 
-    // Kiểm tra xem user đã tồn tại chưa
-    const existingUser = users.find(user => user.username === username);
-    if (existingUser) {
-        return res.status(400).json({ message: 'User đã tồn tại!' });
-    }
+// Lấy tất cả người dùng
+router.get('/users', userController.getAllUsers);
 
-    // Mã hóa mật khẩu
-    const hashedPassword = await bcrypt.hash(password, 10);
+// Lấy thông tin người dùng theo ID
+router.get('/users/:id', userController.getUserById);
 
-    // Lưu user vào bộ nhớ tạm
-    users.push({ username, password: hashedPassword });
-    res.status(201).json({ message: 'Đăng ký thành công!' });
-});
+// Cập nhật thông tin người dùng theo ID
+router.put('/users/:id', userController.updateUser);
+
+// Xóa người dùng theo ID
+router.delete('/users/:id', userController.deleteUser);
 
 
 
