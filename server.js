@@ -8,6 +8,11 @@ require('dotenv').config();  // Tải các biến môi trường từ file .env
 // Tạo ứng dụng Express
 const app = express();
 
+const cors = require('cors');
+
+// Enable CORS for all routes
+app.use(cors());
+
 // Middleware để xử lý JSON
 app.use(express.json());
 

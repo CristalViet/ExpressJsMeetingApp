@@ -10,13 +10,13 @@ npm install mongoose
 npm install nodemailer
 npm install socket.io-client --save
 npm install nodemon --save-dev
-npm install electron --save-dev
+
 npm install socket.io
 npm install mysql2
 npm install bcrypt
 npm install sequelize sequelize-cli
 npm install jsonwebtoken
-
+npm install electron --save-dev
 
 
 
@@ -32,7 +32,7 @@ node server.js
 Tao csdl 
 -- Tạo cơ sở dữ liệu
 CREATE DATABASE ChatApplication;
-USE ChatApplication;
+USE MeetingApp;
 
 -- Bảng Users
 CREATE TABLE Users (
