@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
   // Lang nghe su kien offer tu mot client
   socket.on('offer',(offer,roomId)=>{
     console.log("Nhan duoc offer tu client:",socket.id);
-    socket.broadcast.to(roomId).emit('offer',offer);
+    socket.broadcast.to(  roomId).emit('offer',offer);
   });
   socket.on('answer',(answer,roomId)=>{
     console.log("Nhan duoc answer tu client",socket.id);
