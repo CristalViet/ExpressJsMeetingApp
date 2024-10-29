@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http'); // Thay https bằng http
 const { Server } = require('socket.io');
 const userRoutes = require("./routes/auth");
+const friendRoutes = require('./routes/friend');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();  // Tải các biến môi trường từ file .env
 
@@ -17,6 +18,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api', userRoutes);
+
+app.use('/friends', friendRoutes);
 
 // Tạo server HTTP từ Express
 const server = http.createServer(app); // Sử dụng http.createServer
