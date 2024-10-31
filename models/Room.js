@@ -1,36 +1,38 @@
-// models/Room.js
-
 const { DataTypes } = require('sequelize');
-const sequelize = require('../database/db'); // Cấu hình database của bạn
 
-const Room = sequelize.define('Room', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    allowNull: false,
-  },
-  room_code: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-    unique: true,
-  },
-  name: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-  },
-  created_at: {
-    type: DataTypes.TIMESTAMP,
-    defaultValue: DataTypes.NOW,
-    allowNull: true,
-  },
-  created_by: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-  }
-}, {
-  tableName: 'room', // Tên bảng trong database
-  timestamps: false // Vô hiệu hóa `createdAt` và `updatedAt` mặc định của Sequelize
-});
+module.exports = (sequelize) => {
+  const Room = sequelize.define('Room', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    roomCode: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      unique: true,
+    },
+    name: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    createdBy: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Users',
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
+    },
+  }, {
+    tableName: 'Rooms',
+    timestamps: true,
+  });
 
-module.exports = Room;
+  Room.associate = (models) => {
+    Room.belongsTo(models.User, { foreignKey: 'createdBy' });
+    Room.hasMany(models.RoomMember, { foreignKey: 'roomId', as: 'members' });
+  };
+
+  return Room;
+};

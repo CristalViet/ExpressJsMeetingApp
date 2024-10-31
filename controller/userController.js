@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const User = require('../models/User');
+const { User } = require('../models'); // Đảm bảo import từ models/index.js
 const { json } = require('sequelize');
 const jwt = require('jsonwebtoken');  // Sử dụng JWT để tạo token
 
@@ -116,41 +116,41 @@ const userController = {
             res.status(500).json({ message: "Internal server error" });
         }
     },
-    loginUser:async (req,res)=>{
+    loginUser: async (req, res) => {
         try {
-            const {email,password}=req.body;
-
-            const user=await User.findOne({where:{email}});
-            if(!user){
-                return res.status(400).json({message:"User not found"});
-            }
-
-            const validPassword=await bcrypt.compare(password,user.password);
-            if(!validPassword){
-                return res.status(400).json({message:"Invalid email or password"})
-
-            }
-            
-            const token=jwt.sign(
-                { id: user.id, email: user.email },
-                process.env.JWT_SECRET,  // Khóa bí mật để mã hóa JWT (cần thiết lập trong .env)
-                { expiresIn: '1h' } 
-            )
-
-            res.status(200).json({
-                message:'Login successful',
-                token,
-                user:{
-                    id:user.id,
-                    username:user.username,
-                    email:user.username
-                }
-            });
+          const { email, password } = req.body;
+    
+          // Sử dụng User để tìm thông tin người dùng
+          const user = await User.findOne({ where: { email } });
+          if (!user) {
+            return res.status(400).json({ message: "User not found" });
+          }
+    
+          const validPassword = await bcrypt.compare(password, user.password);
+          if (!validPassword) {
+            return res.status(400).json({ message: "Invalid email or password" });
+          }
+    
+          const token = jwt.sign(
+            { id: user.id, email: user.email },
+            process.env.JWT_SECRET, // Khóa bí mật để mã hóa JWT (cần thiết lập trong .env)
+            { expiresIn: '1h' }
+          );
+    
+          res.status(200).json({
+            message: 'Login successful',
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+            },
+          });
         } catch (error) {
-            console.error('Error logging in:',error)
-            res.status(500).json({message:"Internal server erorr"});
+          console.error('Error logging in:', error);
+          res.status(500).json({ message: "Internal server error" });
         }
-    }
+      }
 };
 
 module.exports = userController;

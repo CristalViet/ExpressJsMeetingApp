@@ -30,11 +30,24 @@ module.exports = {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
-      unique: {
-        type: Sequelize.STRING,
-        unique: true,
-        fields: ['chatId', 'userId']
+      createdAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updatedAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
+    });
+    
+
+    // Thêm unique constraint trên cặp (chatId, userId)
+    await queryInterface.addConstraint('ChatMembers', {
+      fields: ['chatId', 'userId'],
+      type: 'unique',
+      name: 'unique_chat_user'
     });
   },
   async down(queryInterface, Sequelize) {
