@@ -33,6 +33,8 @@ module.exports = (sequelize) => {
     User.hasMany(models.ChatMember, { foreignKey: 'userId', as: 'chatMembers' });
     User.hasMany(models.Message, { foreignKey: 'senderId', as: 'messages' });
     User.hasMany(models.RoomMember, { foreignKey: 'userId', as: 'roomMembers' });
+    User.hasMany(models.Room, { foreignKey: 'createdBy', as: 'rooms' });
+
   };
 
   return User;

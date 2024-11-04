@@ -8,15 +8,22 @@ const chatController = require('./controller/chatController');
 const friendController = require('./controller/friendController'); // Thêm dòng này
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const chatRoutes = require('./routes/chat'); // Import chat routes
+const roomRoutes=require('./routes/room')
+
+
+const sequelize = require('./database/db'); // Đường dẫn đến file kết nối
 
 const app = express();
 const cors = require('cors');
+const Room = require('./models/Room')(sequelize);   
 
 // Enable CORS for all routes
 app.use(cors());
 app.use(express.json());
 
 app.use('/api', userRoutes);
+app.use('/api/meeting',roomRoutes)
 app.use('/friends', friendRoutes);
 app.use('/api/chats', chatRoutes);
 
@@ -63,11 +70,24 @@ io.on('connection', (socket) => {
     socket.join(`user_${userId}`);
     console.log(`User ${userId} joined room user_${userId}`);
   }
-
+  // Xử lý sự kiện từ client (ví dụ gửi tin nhắn)
+  socket.on('sendMessage', (message) => {
+    console.log('Tin nhắn nhận được từ client:', message);
+    io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối\
+    console.log('Da gui tin nhan', message);
+  });
+  // Lang nghe su kien offer tu mot client
+  socket.on('offer',(offer,roomId)=>{
+    console.log("Nhan duoc offer tu client:",socket.id);
+    socket.broadcast.to(  roomId).emit('offer',offer);
+  });
+  socket.on('answer',(answer,roomId)=>{
+    console.log("Nhan duoc answer tu client",socket.id);
+  });
   // Phát sự kiện đến người dùng nhận yêu cầu
-socket.on('friendRequestSent', ({ userId, friendId }) => {
+  socket.on('friendRequestSent', ({ userId, friendId }) => {
   io.to(`user_${friendId}`).emit('friendRequestReceived', { fromUserId: userId });
-});
+  });
 
   // Thêm sự kiện khi có người dùng mới đăng ký
   socket.on('newUserRegistered', (newUser) => {
@@ -81,20 +101,14 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
     socket.broadcast.to(roomId).emit('offer', offer);
   });
 
-  socket.on('answer', (answer, roomId) => {
-    console.log("Received answer from client:", socket.id);
-    socket.broadcast.to(roomId).emit("answer", answer);
-  });
-
-  socket.on('ice-candidate', (candidate, roomId) => {
-    console.log("Received ICE candidate from client:", socket.id);
-    socket.broadcast.to(roomId).emit('ice-candidate', candidate);
-  });
-
-  // Tham gia vào phòng WebRTC
-  socket.on('join-room', (roomId) => {
+  socket.on('join-room',(roomId,userId)=>{
     socket.join(roomId);
-    console.log(`${socket.id} đã tham gia phòng ${roomId}`);
+    console.log(`${socket.id} da tham gia phong ${roomId}`);
+    const room = Room.findOne({where:{  roomCode: roomId  }})
+    room_code=roomId
+    if(!room){
+      room=new Room({room_code});
+    }
   });
 
   // Gửi tin nhắn trong phòng chat
