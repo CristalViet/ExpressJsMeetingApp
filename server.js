@@ -6,9 +6,11 @@ const friendRoutes = require('./routes/friend');
 const chatRoutes = require('./routes/chat');
 const chatController = require('./controller/chatController');
 const friendController = require('./controller/friendController'); // Thêm dòng này
+const roomRoutes=require('./routes/room')
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-
+const sequelize = require('./database/db'); // Đường dẫn đến file kết nối
+const Room = require('./models/Room')(sequelize);   
 const app = express();
 const cors = require('cors');
 
@@ -19,7 +21,8 @@ app.use(express.json());
 app.use('/api', userRoutes);
 app.use('/friends', friendRoutes);
 app.use('/api/chats', chatRoutes);
-
+app.use('/api/chats', chatRoutes); // Đăng ký chat routes
+app.use('/api/meeting', roomRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -76,31 +79,38 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
   });
 
   // WebRTC events
-  socket.on('offer', (offer, roomId) => {
-    console.log("Received offer from client:", socket.id);
-    socket.broadcast.to(roomId).emit('offer', offer);
+  socket.on('offer',(offer,roomId)=>{
+    console.log("Nhan duoc offer tu client:",socket.id);
+    socket.broadcast.to(  roomId).emit('offer',offer);
+  });
+  socket.on('answer',(answer,roomId)=>{
+    console.log("Nhan duoc answer tu client",socket.id);
+
+    socket.broadcast.to(roomId).emit("answer",answer);
   });
 
-  socket.on('answer', (answer, roomId) => {
-    console.log("Received answer from client:", socket.id);
-    socket.broadcast.to(roomId).emit("answer", answer);
-  });
-
-  socket.on('ice-candidate', (candidate, roomId) => {
-    console.log("Received ICE candidate from client:", socket.id);
-    socket.broadcast.to(roomId).emit('ice-candidate', candidate);
+  socket.on('ice-candidate',(candidate,roomId)=>{
+    console.log("NHan duoc ICE candidate tu client:",socket.id);
+    //Phat lai candidate den peer khac trong room
+    socket.broadcast.to(roomId).emit('ice-candidate',candidate);
   });
 
   // Tham gia vào phòng WebRTC
-  socket.on('join-room', (roomId) => {
+  socket.on('join-room',(roomId,userId)=>{
     socket.join(roomId);
-    console.log(`${socket.id} đã tham gia phòng ${roomId}`);
+    console.log(`${socket.id} da tham gia phong ${roomId}`);
+    const room = Room.findOne({where:{  roomCode: roomId  }})
+    room_code=roomId
+    if(!room){
+      room=new Room({room_code})
+    }
   });
 
   // Gửi tin nhắn trong phòng chat
   socket.on('sendMessage', (message) => {
-    console.log('Received message:', message);
-    io.to(message.chatId).emit('receiveMessage', message);
+    console.log('Tin nhắn nhận được từ client:', message);
+    io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối\
+    console.log('Da gui tin nhan', message);
   });
 
   // Tham gia vào phòng chat

@@ -1,3 +1,5 @@
+
+
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
@@ -12,10 +14,7 @@ module.exports = (sequelize) => {
       allowNull: false,
       unique: true,
     },
-    name: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-    },
+   
     createdBy: {
       type: DataTypes.INTEGER,
       references: {

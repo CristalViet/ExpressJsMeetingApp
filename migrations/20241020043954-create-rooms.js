@@ -17,11 +17,6 @@ module.exports = {
       name: {
         type: Sequelize.STRING(100)
       },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-      },
       createdBy: {
         type: Sequelize.INTEGER,
         references: {
@@ -29,6 +24,16 @@ module.exports = {
           key: 'id'
         },
         onDelete: 'SET NULL'
+      },
+      createdAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updatedAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
     });
   },

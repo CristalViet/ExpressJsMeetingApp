@@ -26,11 +26,14 @@ const userController = {
             });
 
             // Phát sự kiện tới tất cả client để thông báo có người dùng mới
-            req.io.emit('newUserRegistered', {
-                id: newUser.id,
-                username: newUser.username,
-                email: newUser.email,
-            });
+            if (req.io) {
+                req.io.emit('newUserRegistered', {
+                    id: newUser.id,
+                    username: newUser.username,
+                    email: newUser.email,
+                });
+            };
+    
 
             res.status(201).json({
                 message: "User created successfully",
