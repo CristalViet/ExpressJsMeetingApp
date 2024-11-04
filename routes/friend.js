@@ -16,5 +16,10 @@ router.get('/list', friendController.getFriendsList);
 
 // Lấy danh sách yêu cầu kết bạn (cả gửi và nhận)
 router.get('/requests', friendController.getFriendRequests);
+// Lấy danh sách gợi ý kết bạn kèm trạng thái
+router.get('/suggested', friendController.getSuggestedFriends);
+//Hủy yêu cầu kết bạn
+// Hủy yêu cầu kết bạn
+router.delete('/cancel', friendController.cancelFriendRequest);
 
 module.exports = router;

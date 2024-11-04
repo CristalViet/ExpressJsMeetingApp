@@ -1,96 +1,115 @@
 const express = require('express');
-const http = require('http'); // Thay https bằng http
+const http = require('http');
 const { Server } = require('socket.io');
 const userRoutes = require("./routes/auth");
 const friendRoutes = require('./routes/friend');
-const chatRoutes = require('./routes/chat'); // Import chat routes
+const chatRoutes = require('./routes/chat');
+const chatController = require('./controller/chatController');
+const friendController = require('./controller/friendController'); // Thêm dòng này
 const jwt = require('jsonwebtoken');
-require('dotenv').config();  // Tải các biến môi trường từ file .env
+require('dotenv').config();
 
-// Tạo ứng dụng Express
 const app = express();
-
 const cors = require('cors');
 
 // Enable CORS for all routes
 app.use(cors());
-
-// Middleware để xử lý JSON
 app.use(express.json());
 
 app.use('/api', userRoutes);
-
 app.use('/friends', friendRoutes);
-app.use('/api/chats', chatRoutes); // Đăng ký chat routes
-// Tạo server HTTP từ Express
-const server = http.createServer(app); // Sử dụng http.createServer
+app.use('/api/chats', chatRoutes);
 
-// Tạo socket.io kết hợp với server HTTP
+const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Cho phép mọi nguồn kết nối (tuỳ chỉnh lại khi cần)
+    origin: '*',
     methods: ['GET', 'POST'],
   },
 });
 
-// Middleware để xác thực token JWT cho Socket.io
+// Gắn `io` vào `req` trong các routes để dùng trong controller
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Khởi tạo Socket.io cho `chatController` và `friendController`
+chatController.init(io);
+friendController.init(io); // Thêm dòng này để khởi tạo friendController với Socket.io
+
+// Middleware để xác thực token JWT cho Socket.io (nếu cần)
 // io.use((socket, next) => {
-//   const token = socket.handshake.auth.token; // Lấy token từ phần auth của handshake
-
-//   if (!token) {
-//     return next(new Error('Authentication error: No token provided'));
-//   }
-
+//   const token = socket.handshake.auth.token;
+//   if (!token) return next(new Error('Authentication error: No token provided'));
 //   try {
-//     // Giải mã và xác thực token
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET); // Sử dụng JWT_SECRET từ file .env
-//     socket.user = decoded; // Lưu thông tin người dùng vào socket để sử dụng sau này
-//     next(); // Cho phép tiếp tục kết nối
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     socket.user = decoded;
+//     next();
 //   } catch (error) {
 //     return next(new Error('Authentication error: Invalid token'));
 //   }
 // });
 
 // Định nghĩa một route đơn giản cho HTTP request
-app.get('/', (req, res) => {
-  res.send('Chào mừng bạn đến với server HTTP kết hợp socket.io!');
-});
 
-// Lắng nghe sự kiện kết nối từ client sử dụng socket.io
+// Xử lý các sự kiện Socket.io cho yêu cầu kết bạn và WebRTC
 io.on('connection', (socket) => {
   console.log('Một client đã kết nối:', socket.id);
 
-  // Xử lý sự kiện từ client (ví dụ gửi tin nhắn)
-  socket.on('sendMessage', (message) => {
-    console.log('Tin nhắn nhận được từ client:', message);
-    io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối
-  });
-  // Lang nghe su kien offer tu mot client
-  socket.on('offer',(offer,roomId)=>{
-    console.log("Nhan duoc offer tu client:",socket.id);
-    socket.broadcast.to(  roomId).emit('offer',offer);
-  });
-  socket.on('answer',(answer,roomId)=>{
-    console.log("Nhan duoc answer tu client",socket.id);
+  // Tham gia vào phòng của người dùng dựa trên userId để gửi thông báo cá nhân
+  const userId = socket.handshake.query.userId;
+  if (userId) {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined room user_${userId}`);
+  }
 
-    socket.broadcast.to(roomId).emit("answer",answer);
-  });
+  // Phát sự kiện đến người dùng nhận yêu cầu
+socket.on('friendRequestSent', ({ userId, friendId }) => {
+  io.to(`user_${friendId}`).emit('friendRequestReceived', { fromUserId: userId });
+});
 
-
-
-  socket.on('ice-candidate',(candidate,roomId)=>{
-    console.log("NHan duoc ICE candidate tu client:",socket.id);
-    //Phat lai candidate den peer khac trong room
-    socket.broadcast.to(roomId).emit('ice-candidate',candidate);
+  // Thêm sự kiện khi có người dùng mới đăng ký
+  socket.on('newUserRegistered', (newUser) => {
+    // Phát sự kiện cho tất cả client (ngoại trừ chính client vừa đăng ký)
+    socket.broadcast.emit('newUserRegistered', newUser);
   });
 
-  socket.on('join-room',(roomId)=>{
+  // WebRTC events
+  socket.on('offer', (offer, roomId) => {
+    console.log("Received offer from client:", socket.id);
+    socket.broadcast.to(roomId).emit('offer', offer);
+  });
+
+  socket.on('answer', (answer, roomId) => {
+    console.log("Received answer from client:", socket.id);
+    socket.broadcast.to(roomId).emit("answer", answer);
+  });
+
+  socket.on('ice-candidate', (candidate, roomId) => {
+    console.log("Received ICE candidate from client:", socket.id);
+    socket.broadcast.to(roomId).emit('ice-candidate', candidate);
+  });
+
+  // Tham gia vào phòng WebRTC
+  socket.on('join-room', (roomId) => {
     socket.join(roomId);
-    console.log(`${socket.id} da tham gia phong ${roomId}`);
-  })
+    console.log(`${socket.id} đã tham gia phòng ${roomId}`);
+  });
 
+  // Gửi tin nhắn trong phòng chat
+  socket.on('sendMessage', (message) => {
+    console.log('Received message:', message);
+    io.to(message.chatId).emit('receiveMessage', message);
+  });
 
-  // Xử lý sự kiện ngắt kết nối từ client
+  // Tham gia vào phòng chat
+  socket.on('joinChat', (chatId) => {
+    socket.join(chatId);
+    console.log(`Client ${socket.id} joined chat room ${chatId}`);
+  });
+
+  // Ngắt kết nối
   socket.on('disconnect', () => {
     console.log('Client đã ngắt kết nối:', socket.id);
   });

@@ -14,5 +14,6 @@ router.get('/:chatId/messages', chatController.getMessages);
 
 // Lấy tất cả cuộc trò chuyện của người dùng
 router.get('/user/:userId', chatController.getUserChats);
+router.get('/chatmembers/list', chatController.fetchChatMembers);
 
 module.exports = router;

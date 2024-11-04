@@ -22,7 +22,14 @@ const userController = {
             const newUser = await User.create({
                 username,
                 email,
-                password: hashedPassword // Sử dụng hashed password
+                password: hashedPassword
+            });
+
+            // Phát sự kiện tới tất cả client để thông báo có người dùng mới
+            req.io.emit('newUserRegistered', {
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
             });
 
             res.status(201).json({

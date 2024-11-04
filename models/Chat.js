@@ -1,3 +1,4 @@
+// models/Chat.js
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
@@ -17,7 +18,7 @@ module.exports = (sequelize) => {
     }
   }, {
     tableName: 'Chats',
-    timestamps: true, // Điều này sẽ tự động thêm `createdAt` và `updatedAt`
+    timestamps: true, // Điều này sẽ tự động thêm createdAt và updatedAt
   });
 
   Chat.associate = (models) => {
