@@ -4,13 +4,17 @@ const { Server } = require('socket.io');
 const userRoutes = require("./routes/auth");
 const friendRoutes = require('./routes/friend');
 const chatRoutes = require('./routes/chat'); // Import chat routes
+const roomRoutes=require('./routes/room')
+
 const jwt = require('jsonwebtoken');
 require('dotenv').config();  // Tải các biến môi trường từ file .env
+const sequelize = require('./database/db'); // Đường dẫn đến file kết nối
 
 // Tạo ứng dụng Express
 const app = express();
 
 const cors = require('cors');
+const Room = require('./models/Room')(sequelize);   
 
 // Enable CORS for all routes
 app.use(cors());
@@ -19,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api', userRoutes);
-
+app.use('/api/meeting',roomRoutes)
 app.use('/friends', friendRoutes);
 app.use('/api/chats', chatRoutes); // Đăng ký chat routes
 // Tạo server HTTP từ Express
@@ -63,7 +67,8 @@ io.on('connection', (socket) => {
   // Xử lý sự kiện từ client (ví dụ gửi tin nhắn)
   socket.on('sendMessage', (message) => {
     console.log('Tin nhắn nhận được từ client:', message);
-    io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối
+    io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối\
+    console.log('Da gui tin nhan', message);
   });
   // Lang nghe su kien offer tu mot client
   socket.on('offer',(offer,roomId)=>{
@@ -84,9 +89,14 @@ io.on('connection', (socket) => {
     socket.broadcast.to(roomId).emit('ice-candidate',candidate);
   });
 
-  socket.on('join-room',(roomId)=>{
+  socket.on('join-room',(roomId,userId)=>{
     socket.join(roomId);
     console.log(`${socket.id} da tham gia phong ${roomId}`);
+    const room = Room.findOne({where:{  roomCode: roomId  }})
+    room_code=roomId
+    if(!room){
+      room=new Room({room_code})
+    }
   })
 
 

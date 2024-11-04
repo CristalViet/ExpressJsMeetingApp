@@ -5,5 +5,7 @@ const sequelize = new Sequelize('MeetingApp', 'root', '12345', {
     host: 'localhost',
     dialect: 'mysql'
 });
-
+sequelize.sync({ alter: true })
+  .then(() => console.log("Database synchronized"))
+  .catch(console.error);
 module.exports = sequelize;
