@@ -12,6 +12,14 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false
     },
+    type: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      defaultValue: 'private', // hoặc 'group' tùy vào trường hợp
+      validate: {
+        isIn: [['private', 'group']], // Chỉ cho phép hai giá trị
+      },
+    },
     createdBy: {
       type: DataTypes.INTEGER,
       allowNull: false

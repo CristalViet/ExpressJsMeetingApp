@@ -29,6 +29,10 @@ module.exports = {
         type: Sequelize.TEXT,
         allowNull: false
       },
+      filePath: {
+        type: Sequelize.STRING(255),
+        allowNull: true, // Cho phép filePath là null nếu đó là tin nhắn văn bản
+      },
       timestamp: {
         allowNull: false,
         type: Sequelize.DATE,

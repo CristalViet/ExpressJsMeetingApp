@@ -13,6 +13,11 @@ module.exports = {
         type: Sequelize.STRING(100),
         allowNull: false
       },
+      type: {
+        type: Sequelize.STRING(10),
+        allowNull: false,
+        defaultValue: 'private' // hoặc 'group', tùy vào trường hợp
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

@@ -14,6 +14,9 @@ router.get('/:chatId/messages', chatController.getMessages);
 
 // Lấy tất cả cuộc trò chuyện của người dùng
 router.get('/user/:userId', chatController.getUserChats);
-router.get('/chatmembers/list', chatController.fetchChatMembers);
+router.get('/chatmembers/list', chatController.fetchChats);
+router.post('/upload', chatController.uploadFile);
+// Tạo cuộc trò chuyện nhóm
+router.post('/group/create', chatController.createGroupChat);
 
 module.exports = router;

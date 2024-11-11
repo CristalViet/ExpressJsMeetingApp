@@ -29,7 +29,11 @@ module.exports = (sequelize) => {
     },
     content: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true, // Cho phép null vì có thể tin nhắn chỉ có file đính kèm
+    },
+    filePath: {
+      type: DataTypes.STRING(255),
+      allowNull: true, // Trường này chứa đường dẫn file, có thể là null nếu không có file đính kèm
     },
     timestamp: {
       type: DataTypes.DATE,
@@ -56,7 +60,6 @@ module.exports = (sequelize) => {
       onDelete: 'SET NULL',
     });
   };
-  
 
   return Message;
 };

@@ -1,6 +1,19 @@
 const { Chat, Message, User, Friend, ChatMember, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const multer = require('multer');
+const path = require('path');
+// Cấu hình multer để lưu file
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Folder để lưu trữ file
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}_${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
 
 const chatController = {
    // Khởi tạo Socket.io
@@ -47,6 +60,7 @@ const chatController = {
       const chat = await Chat.create({
         name: `Chat between ${userId1} and ${userId2}`,
         createdBy: userId1,
+        type: 'private' // Đặt `type` là "private" cho cuộc trò chuyện
       });
 
       // Thêm các thành viên vào cuộc trò chuyện
@@ -59,13 +73,10 @@ const chatController = {
       res.status(500).json({ message: 'Internal server error' });
     }
   },
-  fetchChatMembers : async (req, res) => {
+  fetchChats: async (req, res) => {
     try {
       const userId = parseInt(req.query.userId, 10); // Lấy `userId` từ query và chuyển thành số nguyên
   
-      console.log('User ID:', userId);
-  
-      // Kiểm tra userId phải là số hợp lệ và khác NaN
       if (isNaN(userId)) {
         console.error('User ID không hợp lệ');
         return res.status(400).json({ message: 'User ID không hợp lệ' });
@@ -73,49 +84,118 @@ const chatController = {
   
       // Lấy danh sách chatId mà userId hiện tại đang tham gia
       const userChatMemberships = await ChatMember.findAll({
-        where: {
-          userId: userId,
-        },
-        attributes: ['chatId'], // Chỉ lấy ra `chatId`
+        where: { userId },
+        attributes: ['chatId'],
       });
   
-      // Lấy danh sách chatId mà người dùng này tham gia
       const chatIds = userChatMemberships.map((membership) => membership.chatId);
   
       if (chatIds.length === 0) {
         return res.status(200).json({ message: 'User chưa tham gia cuộc trò chuyện nào' });
       }
   
-      // Lấy tất cả các thành viên khác có cùng `chatId` với `userId`
-      const chatMembers = await ChatMember.findAll({
+      // Lấy tất cả các cuộc trò chuyện mà user hiện tại tham gia và phân loại
+      const chats = await Chat.findAll({
         where: {
-          chatId: {
-            [Op.in]: chatIds, // Chỉ lấy các thành viên thuộc các chatId mà người dùng hiện tại đang tham gia
-          },
-          userId: {
-            [Op.ne]: userId, // Loại trừ `userId` hiện tại
-          },
+          id: { [Op.in]: chatIds },
         },
         include: [
           {
-            model: User,
-            as: 'user', // Đảm bảo sử dụng alias phù hợp với cấu trúc association
-            attributes: ['username', 'email'], // Chỉ lấy ra các trường cần thiết
+            model: ChatMember,
+            as: 'chatMembers',
+            include: [
+              {
+                model: User,
+                as: 'user',
+                attributes: ['username', 'email'],
+              },
+            ],
           },
         ],
       });
   
-      console.log('Chat Members:', chatMembers); // Ghi log danh sách chat members
+      const formattedChats = chats.map((chat) => {
+        if (chat.type === 'group') {
+          return {
+            id: chat.id,
+            name: chat.name, // Lấy tên của group chat
+            type: chat.type,
+          };
+        } else {
+          // Chat kiểu `private`, lấy thông tin thành viên khác
+          const otherMember = chat.chatMembers.find((member) => member.userId !== userId);
+          return {
+            id: chat.id,
+            name: otherMember ? otherMember.user.username : 'Unknown User', // Tên người bạn trong cuộc trò chuyện
+            type: chat.type,
+            email: otherMember ? otherMember.user.email : 'No email',
+          };
+        }
+      });
   
-      return res.status(200).json(chatMembers);
+      return res.status(200).json(formattedChats);
     } catch (error) {
-      console.error('Error fetching chat members:', error);
-      return res.status(500).json({ message: 'Error fetching chat members' });
+      console.error('Error fetching chats:', error);
+      return res.status(500).json({ message: 'Error fetching chats' });
     }
   },
   
   
+  
+
   // Gửi tin nhắn vào cuộc trò chuyện
+  
+  
+
+  // Lấy tất cả tin nhắn trong cuộc trò chuyện
+ // Lấy tất cả tin nhắn trong cuộc trò chuyện
+ getMessages: async (req, res) => {
+  try {
+    const { chatId } = req.params;
+
+    const messages = await Message.findAll({
+      where: { chatId },
+      include: [
+        {
+          model: User,
+          as: 'sender',
+          attributes: ['id', 'username'],
+        },
+      ],
+      order: [['createdAt', 'ASC']],
+    });
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+},
+
+
+
+  // Lấy tất cả cuộc trò chuyện của người dùng
+  getUserChats: async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const chats = await Chat.findAll({
+        include: [
+          {
+            model: ChatMember,
+            as: 'chatMembers',
+            where: { userId },
+            include: [{ model: User, as: 'user', attributes: ['id', 'username'] }],
+          },
+        ],
+      });
+
+      res.status(200).json(chats);
+    } catch (error) {
+      console.error('Error fetching user chats:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
   sendMessage: async (req, res) => {
     try {
       const { chatId, senderId, content } = req.body;
@@ -149,79 +229,95 @@ const chatController = {
       res.status(500).json({ message: 'Internal server error' });
     }
   },
+  uploadFile: [
+    upload.single('file'),
+    async (req, res) => {
+      try {
+        const { chatId, senderId } = req.body;
+        const filePath = req.file.path;
+
+        // Kiểm tra xem người gửi có phải là thành viên của cuộc trò chuyện không
+        const chatMember = await ChatMember.findOne({
+          where: { chatId, userId: senderId },
+        });
+
+        if (!chatMember) {
+          return res.status(403).json({ message: 'You are not a member of this chat' });
+        }
+
+        // Tạo tin nhắn mới và lưu thông tin file vào cơ sở dữ liệu
+        const newMessage = await Message.create({
+          chatId,
+          senderId,
+          content: '', // Để trống content nếu chỉ gửi file
+          filePath,
+        });
+
+        // Phát tin nhắn chứa file cho tất cả các thành viên khác trong phòng chat
+        if (io) {
+          io.to(chatId).emit('receiveMessage', {
+            ...newMessage.dataValues, // Bao gồm tất cả thông tin tin nhắn
+            filePath: `${filePath}`,  // Đảm bảo filePath có đường dẫn chính xác
+          });
+        }
+
+        console.log('File message emitted: ', newMessage);
+
+        res.status(201).json({ message: 'File sent successfully', message: newMessage });
+      } catch (error) {
+        console.error('Error sending file:', error);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    },
+  ],
   
-
-  // Lấy tất cả tin nhắn trong cuộc trò chuyện
- // Lấy tất cả tin nhắn trong cuộc trò chuyện
- getMessages: async (req, res) => {
-  try {
-    const { chatId } = req.params;
-
-    const messages = await Message.findAll({
-      where: { chatId },
-      include: [
-        {
-          model: User,
-          as: 'sender',
-          attributes: ['id', 'username'],
-        },
-      ],
-      order: [['createdAt', 'ASC']],
-    });
-
-    res.status(200).json(messages);
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-},
-
-// Lấy tất cả cuộc trò chuyện của người dùng
-getUserChats: async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const chats = await Chat.findAll({
-      include: [
-        {
-          model: ChatMember,
-          as: 'chatMembers',
-          where: { userId },
-          include: [{ model: User, as: 'user', attributes: ['id', 'username'] }],
-        },
-      ],
-    });
-
-    res.status(200).json(chats);
-  } catch (error) {
-    console.error('Error fetching user chats:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-},
-
-
-  // Lấy tất cả cuộc trò chuyện của người dùng
-  getUserChats: async (req, res) => {
+  // Trong hàm createGroupChat
+  createGroupChat: async (req, res) => {
     try {
-      const { userId } = req.params;
-
-      const chats = await Chat.findAll({
-        include: [
-          {
-            model: ChatMember,
-            as: 'chatMembers',
-            where: { userId },
-            include: [{ model: User, as: 'user', attributes: ['id', 'username'] }],
-          },
-        ],
-      });
-
-      res.status(200).json(chats);
+      let { userIds, groupName, userId } = req.body;
+  
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+  
+      // Thêm người tạo vào danh sách thành viên nếu chưa có
+      if (!userIds.includes(userId)) {
+        userIds.push(userId);
+      }
+  
+      // Tạo cuộc trò chuyện nhóm mới
+      const chat = await Chat.create({
+         name: groupName, 
+         createdBy: userId,
+         type: 'group'
+        });
+  
+      // Thêm các thành viên vào nhóm
+      await Promise.all(
+        userIds.map(async (memberId) => {
+          return await ChatMember.create({ chatId: chat.id, userId: memberId });
+        })
+      );
+  
+      // Phát sự kiện `groupCreated` cho tất cả thành viên, bao gồm người tạo
+      const io = req.app.get('io');
+      if (io) {
+        userIds.forEach((memberId) => {
+          io.to(`user_${memberId}`).emit('groupCreated', { chat });
+        });
+      } else {
+        console.error('Socket.io instance is not available');
+      }
+  
+      res.status(201).json({ message: 'Group chat created successfully', chat });
     } catch (error) {
-      console.error('Error fetching user chats:', error);
+      console.error('Error creating group chat:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
+  
+  
+  
 };
 
 module.exports = chatController;

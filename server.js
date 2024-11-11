@@ -1,12 +1,21 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
+
 const userRoutes = require("./routes/auth");
 const friendRoutes = require('./routes/friend');
 const chatRoutes = require('./routes/chat');
-const chatController = require('./controller/chatController');
-const friendController = require('./controller/friendController'); // Thêm dòng này
 const roomRoutes=require('./routes/room')
+const documentRoutes = require('./routes/document');
+
+
+const { Chat, Message, User, Friend, ChatMember } = require('./models');
+
+
+const chatController = require('./controller/chatController');
+const friendController = require('./controller/friendController');
+
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const sequelize = require('./database/db'); // Đường dẫn đến file kết nối
@@ -20,9 +29,11 @@ app.use(express.json());
 
 app.use('/api', userRoutes);
 app.use('/friends', friendRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/chats', chatRoutes);
-app.use('/api/chats', chatRoutes); // Đăng ký chat routes
+
 app.use('/api/meeting', roomRoutes);
+app.use('/api/documents', documentRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -112,7 +123,24 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
     io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối\
     console.log('Da gui tin nhan', message);
   });
+  socket.on('createGroup', ({ chat, userIds }) => {
+    try {
+      console.log(`Emitting group creation for chat: ${chat.name} to userIds:`, userIds); // Log kiểm tra
+      // Phát sự kiện `groupCreated` đến tất cả các user trong danh sách `userIds`
+      userIds.forEach((memberId) => {
+        io.to(`user_${memberId}`).emit('groupCreated', { chat });
+      });
+  
+      console.log(`Nhóm ${chat.name} đã được phát sóng đến các thành viên!`);
+    } catch (error) {
+      console.error('Error emitting group creation:', error);
+      socket.emit('error', { message: 'Error emitting group creation' });
+    }
+  });
 
+  
+  
+  
   // Tham gia vào phòng chat
   socket.on('joinChat', (chatId) => {
     socket.join(chatId);

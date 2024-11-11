@@ -182,7 +182,8 @@ const friendController = {
       if (!existingChat) {
         const chat = await Chat.create({
           name: `Chat between ${userId} and ${friendId}`,
-          createdBy: userId
+          createdBy: userId,
+          type: 'private' // Set type là "private" cho cuộc trò chuyện
         });
   
         await ChatMember.bulkCreate([
