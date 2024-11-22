@@ -199,36 +199,57 @@ const chatController = {
   sendMessage: async (req, res) => {
     try {
       const { chatId, senderId, content } = req.body;
-
+  
       if (!chatId || !senderId || !content) {
         return res.status(400).json({ message: 'chatId, senderId, and content are required' });
       }
-
+  
       // Kiểm tra xem người gửi có phải là thành viên của cuộc trò chuyện không
       const chatMember = await ChatMember.findOne({
         where: { chatId, userId: senderId },
       });
-
+  
       if (!chatMember) {
         return res.status(403).json({ message: 'You are not a member of this chat' });
       }
-
+  
       // Tạo tin nhắn mới và lưu vào cơ sở dữ liệu
       const newMessage = await Message.create({
         chatId,
         senderId,
         content,
       });
-
+  
+      // Lấy thông tin người gửi từ cơ sở dữ liệu
+      const sender = await User.findOne({
+        where: { id: senderId },
+        attributes: ['id', 'username'], // Lấy các thông tin cần thiết
+      });
+  
+      if (!sender) {
+        return res.status(404).json({ message: 'Sender not found' });
+      }
+  
+      // Gắn thông tin người gửi vào tin nhắn
+      const fullMessage = {
+        ...newMessage.dataValues,
+        sender: {
+          id: sender.id,
+          username: sender.username,
+        },
+      };
+  
       // Phát tin nhắn cho các thành viên trong phòng
-      io.to(chatId).emit('receiveMessage', newMessage);
-
-      res.status(201).json({ message: 'Message sent successfully', message: newMessage });
+      io.to(chatId).emit('receiveMessage', fullMessage);
+  
+      // Trả về phản hồi HTTP với thông tin đầy đủ của tin nhắn
+      res.status(201).json({ message: 'Message sent successfully', message: fullMessage });
     } catch (error) {
       console.error('Error sending message:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
+  
   uploadFile: [
     upload.single('file'),
     async (req, res) => {

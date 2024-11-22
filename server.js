@@ -118,11 +118,39 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
   });
 
   // Gửi tin nhắn trong phòng chat
-  socket.on('sendMessage', (message) => {
-    console.log('Tin nhắn nhận được từ client:', message);
-    io.emit('receiveMessage', message); // Phát tin nhắn cho tất cả client kết nối\
-    console.log('Da gui tin nhan', message);
+  socket.on('sendMessage', async (message) => {
+    try {
+      console.log('Tin nhắn nhận được từ client:', message);
+  
+      // Lấy thông tin người gửi từ cơ sở dữ liệu
+      const sender = await User.findOne({
+        where: { id: message.senderId },
+        attributes: ['id', 'username'], // Lấy đủ thông tin của người gửi
+      });
+  
+      if (!sender) {
+        console.error('Sender không tồn tại');
+        return;
+      }
+  
+      // Gắn thông tin người gửi vào tin nhắn
+      const enrichedMessage = {
+        ...message,
+        sender: {
+          id: sender.id,
+          username: sender.username,
+        },
+      };
+  
+      // Phát tin nhắn cho client
+      io.to(message.chatId).emit('receiveMessage', enrichedMessage);
+      console.log('Đã phát tin nhắn:', enrichedMessage);
+    } catch (error) {
+      console.error('Lỗi khi phát tin nhắn:', error);
+    }
   });
+  
+  
   socket.on('createGroup', ({ chat, userIds }) => {
     try {
       console.log(`Emitting group creation for chat: ${chat.name} to userIds:`, userIds); // Log kiểm tra
