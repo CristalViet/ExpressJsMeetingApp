@@ -251,46 +251,63 @@ const chatController = {
   },
   
   uploadFile: [
-    upload.single('file'),
-    async (req, res) => {
-      try {
-        const { chatId, senderId } = req.body;
-        const filePath = req.file.path;
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      const { chatId, senderId } = req.body;
+      const filePath = req.file.path;
 
-        // Kiểm tra xem người gửi có phải là thành viên của cuộc trò chuyện không
-        const chatMember = await ChatMember.findOne({
-          where: { chatId, userId: senderId },
-        });
+      // Kiểm tra xem người gửi có phải là thành viên của cuộc trò chuyện không
+      const chatMember = await ChatMember.findOne({
+        where: { chatId, userId: senderId },
+      });
 
-        if (!chatMember) {
-          return res.status(403).json({ message: 'You are not a member of this chat' });
-        }
-
-        // Tạo tin nhắn mới và lưu thông tin file vào cơ sở dữ liệu
-        const newMessage = await Message.create({
-          chatId,
-          senderId,
-          content: '', // Để trống content nếu chỉ gửi file
-          filePath,
-        });
-
-        // Phát tin nhắn chứa file cho tất cả các thành viên khác trong phòng chat
-        if (io) {
-          io.to(chatId).emit('receiveMessage', {
-            ...newMessage.dataValues, // Bao gồm tất cả thông tin tin nhắn
-            filePath: `${filePath}`,  // Đảm bảo filePath có đường dẫn chính xác
-          });
-        }
-
-        console.log('File message emitted: ', newMessage);
-
-        res.status(201).json({ message: 'File sent successfully', message: newMessage });
-      } catch (error) {
-        console.error('Error sending file:', error);
-        res.status(500).json({ message: 'Internal server error' });
+      if (!chatMember) {
+        return res.status(403).json({ message: 'You are not a member of this chat' });
       }
-    },
-  ],
+
+      // Lưu tin nhắn file vào cơ sở dữ liệu
+      const newMessage = await Message.create({
+        chatId,
+        senderId,
+        content: '', // Không có nội dung văn bản
+        filePath,
+      });
+
+      // Lấy thông tin người gửi từ cơ sở dữ liệu
+      const sender = await User.findOne({
+        where: { id: senderId },
+        attributes: ['id', 'username'], // Chỉ lấy các trường cần thiết
+      });
+
+      if (!sender) {
+        return res.status(404).json({ message: 'Sender not found' });
+      }
+
+      // Kết hợp thông tin file và người gửi vào tin nhắn đầy đủ
+      const fullMessage = {
+        ...newMessage.dataValues,
+        sender: {
+          id: sender.id,
+          username: sender.username,
+        },
+      };
+
+      // Phát tin nhắn chứa file đến tất cả các thành viên trong phòng
+      if (io) {
+        io.to(chatId).emit('receiveMessage', fullMessage);
+      }
+
+      console.log('File message emitted: ', fullMessage);
+
+      res.status(201).json({ message: 'File sent successfully', message: fullMessage });
+    } catch (error) {
+      console.error('Error sending file:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+],
+
   
   // Trong hàm createGroupChat
   createGroupChat: async (req, res) => {

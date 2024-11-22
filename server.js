@@ -125,15 +125,15 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
       // Lấy thông tin người gửi từ cơ sở dữ liệu
       const sender = await User.findOne({
         where: { id: message.senderId },
-        attributes: ['id', 'username'], // Lấy đủ thông tin của người gửi
+        attributes: ['id', 'username'], // Chỉ lấy các trường cần thiết
       });
   
       if (!sender) {
-        console.error('Sender không tồn tại');
+        console.error('Người gửi không tồn tại');
         return;
       }
   
-      // Gắn thông tin người gửi vào tin nhắn
+      // Bổ sung thông tin người gửi vào tin nhắn
       const enrichedMessage = {
         ...message,
         sender: {
@@ -142,15 +142,16 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
         },
       };
   
-      // Phát tin nhắn cho client
+      // Phát tin nhắn đến tất cả các client trong phòng
       io.to(message.chatId).emit('receiveMessage', enrichedMessage);
       console.log('Đã phát tin nhắn:', enrichedMessage);
     } catch (error) {
-      console.error('Lỗi khi phát tin nhắn:', error);
+      console.error('Lỗi khi xử lý sự kiện sendMessage:', error);
     }
   });
   
   
+
   socket.on('createGroup', ({ chat, userIds }) => {
     try {
       console.log(`Emitting group creation for chat: ${chat.name} to userIds:`, userIds); // Log kiểm tra
