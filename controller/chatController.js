@@ -250,7 +250,8 @@ const chatController = {
     }
   },
   
-  uploadFile: [
+  // Trong phần uploadFile
+uploadFile: [
   upload.single('file'),
   async (req, res) => {
     try {
@@ -266,11 +267,11 @@ const chatController = {
         return res.status(403).json({ message: 'You are not a member of this chat' });
       }
 
-      // Lưu tin nhắn file vào cơ sở dữ liệu
+      // Tạo tin nhắn mới và lưu thông tin file vào cơ sở dữ liệu
       const newMessage = await Message.create({
         chatId,
         senderId,
-        content: '', // Không có nội dung văn bản
+        content: 'file', // Dùng 'file' nếu không có nội dung văn bản
         filePath,
       });
 
@@ -307,6 +308,7 @@ const chatController = {
     }
   },
 ],
+
 
   
   // Trong hàm createGroupChat

@@ -125,7 +125,7 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
       // Lấy thông tin người gửi từ cơ sở dữ liệu
       const sender = await User.findOne({
         where: { id: message.senderId },
-        attributes: ['id', 'username'], // Chỉ lấy các trường cần thiết
+        attributes: ['id', 'username'],
       });
   
       if (!sender) {
@@ -142,13 +142,22 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
         },
       };
   
-      // Phát tin nhắn đến tất cả các client trong phòng
+      // Đảm bảo gửi `filePath` khi có file
+      if (message.filePath) {
+        enrichedMessage.filePath = message.filePath;
+      }
+  
+      // Phát tin nhắn cho tất cả các client trong phòng chat
       io.to(message.chatId).emit('receiveMessage', enrichedMessage);
       console.log('Đã phát tin nhắn:', enrichedMessage);
     } catch (error) {
       console.error('Lỗi khi xử lý sự kiện sendMessage:', error);
     }
   });
+  
+  
+  
+  
   
   
 
