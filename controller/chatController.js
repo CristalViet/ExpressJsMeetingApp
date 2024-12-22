@@ -140,14 +140,38 @@ const chatController = {
     }
   },
   
+  getChatMembers: async (req, res) => {
+    try {
+      const { chatId } = req.query; // Lấy chatId từ query parameters
   
+      if (!chatId) {
+        return res.status(400).json({ message: 'Chat ID is required' });
+      }
+  
+      // Lấy danh sách thành viên từ bảng ChatMembers
+      const chatMembers = await ChatMember.findAll({
+        where: { chatId },
+        include: [
+          {
+            model: User, // Include bảng User để lấy thông tin user
+            as: 'user',
+            attributes: ['id', 'username', 'email'], // Chỉ lấy các trường cần thiết
+          },
+        ],
+      });
+  
+      if (chatMembers.length === 0) {
+        return res.status(404).json({ message: 'No members found for this chat' });
+      }
+  
+      res.status(200).json(chatMembers);
+    } catch (error) {
+      console.error('Error fetching chat members:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
   
 
-  // Gửi tin nhắn vào cuộc trò chuyện
-  
-  
-
-  // Lấy tất cả tin nhắn trong cuộc trò chuyện
  // Lấy tất cả tin nhắn trong cuộc trò chuyện
  getMessages: async (req, res) => {
   try {

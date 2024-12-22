@@ -154,6 +154,10 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
       console.error('Lỗi khi xử lý sự kiện sendMessage:', error);
     }
   });
+  socket.on('sendMessageMeeting', (message) => {
+    const { text, roomId, userId, userName } = message;
+    io.to(roomId).emit('receiveMessageMeeting', { text, userId, userName });
+  });
   
   
   
