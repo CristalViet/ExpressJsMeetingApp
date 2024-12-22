@@ -5,7 +5,7 @@ module.exports = (sequelize) => {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      autoIncrement: true
+      autoIncrement: true,
     },
     username: {
       type: DataTypes.STRING,
@@ -17,12 +17,20 @@ module.exports = (sequelize) => {
       unique: true,
       validate: {
         isEmail: true,
-      }
+      },
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-    }
+    },
+    resetToken: {
+      type: DataTypes.STRING, // Token đặt lại mật khẩu
+      allowNull: true,
+    },
+    resetTokenExpire: {
+      type: DataTypes.DATE, // Thời gian hết hạn token
+      allowNull: true,
+    },
   }, {
     tableName: 'Users',
     timestamps: true,
@@ -34,7 +42,6 @@ module.exports = (sequelize) => {
     User.hasMany(models.Message, { foreignKey: 'senderId', as: 'messages' });
     User.hasMany(models.RoomMember, { foreignKey: 'userId', as: 'roomMembers' });
     User.hasMany(models.Room, { foreignKey: 'createdBy', as: 'rooms' });
-
   };
 
   return User;
