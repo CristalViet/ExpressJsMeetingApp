@@ -1,7 +1,9 @@
 const bcrypt = require('bcrypt');
-const { User } = require('../models'); // Đảm bảo import từ models/index.js
+// const { User } = require('../models'); // Đảm bảo import từ models/index.js
 const { json } = require('sequelize');
 const jwt = require('jsonwebtoken');  // Sử dụng JWT để tạo token
+const { Friend, User, Chat, ChatMember, sequelize } = require('../models');
+
 
 
 const userController = {
