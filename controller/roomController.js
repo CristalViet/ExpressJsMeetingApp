@@ -14,7 +14,6 @@ function generateRandomCode(length) {
     return result;
   }
 const roomController= {
-    //Gui yeu cau ket ban
 
     createRoomRequest:async(req,res)=>{
         try {

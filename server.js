@@ -188,6 +188,37 @@ socket.on('friendRequestSent', ({ userId, friendId }) => {
     socket.join(chatId);
     console.log(`Client ${socket.id} joined chat room ${chatId}`);
   });
+  socket.on('profileUpdated', async (updatedUser) => {
+    try {
+      // Tìm người dùng trong cơ sở dữ liệu
+      const user = await User.findOne({ where: { id: updatedUser.id } });
+  
+      if (!user) {
+        console.error('Người dùng không tồn tại');
+        return;
+      }
+  
+      // Cập nhật thông tin người dùng
+      user.username = updatedUser.username || user.username;
+      user.email = updatedUser.email || user.email;
+      await user.save();
+  
+      console.log('User updated in database:', user);
+  
+      // Phát sự kiện cập nhật đến tất cả các client
+      io.emit('userUpdated', {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        // Thêm các trường cần thiết nếu có
+        status: updatedUser.status || null, // Ví dụ thêm trường status
+        isGroup: false, // Đảm bảo định dạng đồng bộ nếu có
+      });
+    } catch (error) {
+      console.error('Error updating user:', error);
+    }
+  });
+  
 
   // Ngắt kết nối
   socket.on('disconnect', () => {

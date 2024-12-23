@@ -76,35 +76,79 @@ const userController = {
     updateUser: async (req, res) => {
         try {
             const userId = req.params.id;
+    
+            // Kiểm tra token để xác thực người dùng
+            const authHeader = req.headers.authorization;
+            if (!authHeader) {
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+    
+            const token = authHeader.split(' ')[1];
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+            // Xác thực người dùng có quyền cập nhật
+            if (decoded.id !== parseInt(userId)) {
+                return res.status(403).json({ message: "Forbidden: You can only update your own information" });
+            }
+    
             const { username, email, password } = req.body;
-
-            // Kiểm tra xem người dùng có tồn tại không
+    
+            // Tìm người dùng
             const user = await User.findByPk(userId);
             if (!user) {
                 return res.status(404).json({ message: "User not found" });
             }
-
-            // Cập nhật thông tin người dùng
-            user.username = username || user.username;
-            user.email = email || user.email;
-
+    
+            // Cập nhật các trường
+            if (username) user.username = username;
+            if (email) user.email = email;
+    
             if (password) {
                 const hashedPassword = await bcrypt.hash(password, 10);
-                user.password = hashedPassword; // Cập nhật password đã được hash
+                user.password = hashedPassword;
             }
-
+    
             await user.save();
-
+    
             res.status(200).json({
                 message: "User updated successfully",
-                user
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                },
             });
-
         } catch (error) {
             console.error("Error updating user:", error);
             res.status(500).json({ message: "Internal server error" });
         }
     },
+    updatePassword: async (req, res) => {
+        try {
+            const userId = req.params.id;
+            const { oldPassword, newPassword } = req.body;
+    
+            const user = await User.findByPk(userId);
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+    
+            const validOldPassword = await bcrypt.compare(oldPassword, user.password);
+            if (!validOldPassword) {
+                return res.status(400).json({ message: "Incorrect old password" });
+            }
+    
+            const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+            user.password = hashedNewPassword;
+            await user.save();
+    
+            res.status(200).json({ message: "Password updated successfully" });
+        } catch (error) {
+            console.error("Error updating password:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    },
+    
 
     deleteUser: async (req, res) => {
         try {

@@ -24,9 +24,9 @@ router.get('/users/:id', userController.getUserById);
 // Cập nhật thông tin người dùng theo ID
 router.put('/users/:id', userController.updateUser);
 
-// Xóa người dùng theo ID
-router.delete('/users/:id', userController.deleteUser);
 
 
+router.put('/:id', userController.updateUser); // Cập nhật thông tin người dùng
+router.put('/users/:id/password', userController.updatePassword);
 
 module.exports = router;
